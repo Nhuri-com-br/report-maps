@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { MobileNav } from './components/MobileNav';
 import { MapView } from './components/MapView';
 import { Modal } from './components/Modal';
 import { ReportForm } from './components/ReportForm';
@@ -43,6 +44,19 @@ export default function App() {
   const handleUpdateStatus = async (issueId: string, newStatus: 'pending' | 'in_progress' | 'solved') => {
     try {
       await issueService.updateStatus(issueId, newStatus);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleDeleteIssue = async (issueId: string) => {
+    if (!isAdminUser()) return;
+    if (!window.confirm('Tem certeza que deseja apagar permanentemente esta ocorrência?')) return;
+    
+    try {
+      await issueService.deleteIssue(issueId);
+      if (selectedIssue?.id === issueId) setSelectedIssue(null);
+      if (selectedIssueForForum?.id === issueId) setSelectedIssueForForum(null);
     } catch (error) {
       console.error(error);
     }
@@ -138,13 +152,13 @@ export default function App() {
     switch (view) {
       case 'dashboard':
         return (
-          <div className="p-8 max-w-6xl mx-auto space-y-8">
+          <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-8">
             <header>
-              <h1 className="text-3xl font-bold text-slate-900">Bem-vindo ao Report Maps</h1>
-              <p className="text-slate-500 mt-1">Aqui está um resumo do que está acontecendo na sua cidade.</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Bem-vindo ao Report Maps</h1>
+              <p className="text-sm sm:text-base text-slate-500 mt-1">Aqui está um resumo do que está acontecendo na sua cidade.</p>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
               <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-4">
                   <AlertTriangle size={20} />
@@ -222,23 +236,35 @@ export default function App() {
                         >
                           <ThumbsUp size={14} className={cn(isLiked && "fill-white")} /> {issue.likesCount}
                         </button>
-                        <button 
-                          onClick={() => {
-                            setSelectedIssueForForum(issue);
-                            setTab('forum');
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-semibold hover:bg-slate-100"
-                        >
-                          <MessageCircle size={14} /> Comentar
-                        </button>
-                        {isAdminUser() && issue.status !== 'solved' && (
+                        <div className="flex flex-wrap items-center gap-2">
                           <button 
-                            onClick={() => handleUpdateStatus(issue.id, 'solved')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-600 text-white text-xs font-bold hover:bg-green-700 shadow-sm"
+                            onClick={() => {
+                              setSelectedIssueForForum(issue);
+                              setTab('forum');
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-semibold hover:bg-slate-100"
                           >
-                            Marcar como Resolvido
+                            <MessageCircle size={14} /> Comentar
                           </button>
-                        )}
+                          {isAdminUser() && (
+                            <div className="flex gap-2 w-full sm:w-auto">
+                              {issue.status !== 'solved' && (
+                                <button 
+                                  onClick={() => handleUpdateStatus(issue.id, 'solved')}
+                                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-green-600 text-white text-[10px] font-bold hover:bg-green-700 shadow-sm"
+                                >
+                                  Resolver
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => handleDeleteIssue(issue.id)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-600 text-[10px] font-bold hover:bg-red-100 transition-colors"
+                              >
+                                <X size={14} /> Apagar
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   );
@@ -319,19 +345,31 @@ export default function App() {
                       </button>
                     </div>
                     <p className="text-sm text-slate-600">{selectedIssue.description}</p>
-                    {isAdminUser() && selectedIssue.status !== 'solved' && (
-                      <div className="flex gap-2">
+                    {isAdminUser() && (
+                      <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
+                        <div className="flex gap-2">
+                          {selectedIssue.status !== 'solved' && (
+                            <>
+                              <button 
+                                onClick={() => handleUpdateStatus(selectedIssue.id, 'in_progress')}
+                                className="flex-1 bg-amber-500 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors"
+                              >
+                                Em Progresso
+                              </button>
+                              <button 
+                                onClick={() => handleUpdateStatus(selectedIssue.id, 'solved')}
+                                className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors"
+                              >
+                                Resolvido
+                              </button>
+                            </>
+                          )}
+                        </div>
                         <button 
-                          onClick={() => handleUpdateStatus(selectedIssue.id, 'in_progress')}
-                          className="flex-1 bg-amber-500 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors"
+                          onClick={() => handleDeleteIssue(selectedIssue.id)}
+                          className="w-full bg-red-50 text-red-600 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
                         >
-                          Em Progresso
-                        </button>
-                        <button 
-                          onClick={() => handleUpdateStatus(selectedIssue.id, 'solved')}
-                          className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors"
-                        >
-                          Resolvido
+                          <X size={14} /> Apagar Ocorrência
                         </button>
                       </div>
                     )}
@@ -356,17 +394,17 @@ export default function App() {
         );
       case 'forum':
         return (
-          <div className="p-8 max-w-4xl mx-auto h-full flex flex-col">
+          <div className="p-4 sm:p-8 max-w-4xl mx-auto h-full flex flex-col">
             {!selectedIssueForForum ? (
-              <div className="flex-1 flex flex-col space-y-6">
+              <div className="flex-1 flex flex-col space-y-4 sm:space-y-6">
                 <header className="space-y-2">
-                  <h2 className="text-2xl font-bold text-slate-900">Fórum de Discussão</h2>
-                  <p className="text-sm text-slate-500">
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Fórum de Discussão</h2>
+                  <p className="text-xs sm:text-sm text-slate-500">
                     Selecione uma das ocorrências abaixo para ver os comentários ou participar da discussão.
                   </p>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {issues.filter(i => i.commentsCount && i.commentsCount > 0).length === 0 ? (
                     <div className="col-span-full py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
                       <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-300 shadow-sm">
@@ -542,16 +580,16 @@ export default function App() {
         );
       case 'about':
         return (
-          <div className="p-8 max-w-4xl mx-auto space-y-8">
-            <header className="text-center space-y-4">
-              <div className="w-20 h-20 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center shadow-xl shadow-blue-200">
-                <MapIcon className="text-white" size={40} />
+          <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-6 sm:space-y-8">
+            <header className="text-center space-y-3 sm:space-y-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blue-600 rounded-2xl sm:rounded-3xl mx-auto flex items-center justify-center shadow-xl shadow-blue-200">
+                <MapIcon className="text-white" size={32} />
               </div>
-              <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Report Maps</h1>
-              <p className="text-xl text-slate-500 max-w-2xl mx-auto">TCC de Desenvolvimento de Sistemas</p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">Report Maps</h1>
+              <p className="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto">TCC de Desenvolvimento de Sistemas</p>
             </header>
 
-            <div className="prose prose-slate max-w-none bg-white p-8 rounded-2xl border border-slate-100 shadow-sm space-y-6">
+            <div className="prose prose-slate max-w-none bg-white p-6 sm:p-8 rounded-2xl border border-slate-100 shadow-sm space-y-6">
               <section>
                 <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
                   <span className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center text-sm">01</span>
@@ -616,10 +654,12 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100 text-slate-900 font-sans overflow-hidden">
-      <Sidebar currentTab={currentTab} setTab={setTab} />
+    <div className="flex flex-col md:flex-row h-screen bg-slate-100 text-slate-900 font-sans overflow-hidden">
+      <div className="hidden md:block">
+        <Sidebar currentTab={currentTab} setTab={setTab} />
+      </div>
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0">
         <Header currentTab={currentTab} setTab={setTab} onReportClick={() => setIsReportModalOpen(true)} />
         
         <div className="flex flex-1 overflow-hidden">
@@ -713,6 +753,8 @@ export default function App() {
       >
         <ReportForm onSubmit={handleCreateIssue} initialLocation={clickedLocation} />
       </Modal>
+
+      <MobileNav currentTab={currentTab} setTab={setTab} onReportClick={() => setIsReportModalOpen(true)} />
     </div>
   );
 }

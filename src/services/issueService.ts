@@ -86,5 +86,15 @@ export const issueService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
+  },
+  
+  deleteIssue: async (issueId: string) => {
+    const path = `${ISSUES_COLLECTION}/${issueId}`;
+    try {
+      const { deleteDoc } = await import('firebase/firestore');
+      await deleteDoc(doc(db, ISSUES_COLLECTION, issueId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
   }
 };

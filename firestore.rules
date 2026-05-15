@@ -80,6 +80,8 @@ service cloud.firestore {
           ((isOwner(resource.data.reporterId) || isAdmin()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
         );
 
+      allow delete: if isAdmin();
+
       // Rules for Comments
       match /comments/{commentId} {
         allow read: if true; // Public read access for discussions
