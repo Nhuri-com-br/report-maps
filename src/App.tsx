@@ -27,10 +27,15 @@ export default function App() {
   const [clickedLocation, setClickedLocation] = useState<{ lat: number, lng: number } | undefined>(undefined);
 
   const filteredIssues = issues.filter(issue => {
-    if (currentTab === 'map_fire') return issue.type === 'fire';
-    if (currentTab === 'map_flood') return issue.type === 'flooding';
-    if (currentTab === 'map_pothole') return issue.type === 'pothole';
-    if (currentTab === 'map_power') return issue.type === 'power_outage';
+    const filterType = currentTab.replace('map_', '');
+    
+    // Support both direct types and mapping for standard categories
+    if (filterType === 'fire') return issue.type === 'fire';
+    if (filterType === 'flood') return issue.type === 'flooding';
+    if (filterType === 'pothole') return issue.type === 'pothole';
+    if (filterType === 'power') return issue.type === 'power_outage';
+    
+    // If it's just 'map' or 'dashboard', show all
     return true;
   });
 
@@ -185,6 +190,13 @@ export default function App() {
           </div>
         );
       case 'map':
+        const activeFilter = currentTab.startsWith('map_') 
+          ? ISSUE_TYPES.find(t => 
+              currentTab.includes(t.type.replace('_outage', '')) || 
+              (currentTab.includes('flood') && t.type === 'flooding')
+            )
+          : null;
+
         return (
           <div className="flex-1 h-full relative">
             <MapView 
@@ -195,6 +207,32 @@ export default function App() {
                 setIsReportModalOpen(true);
               }}
             />
+
+            {/* Indicador de Filtro Ativo */}
+            <AnimatePresence>
+              {activeFilter && (
+                <motion.div 
+                  initial={{ y: -20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -20, opacity: 0 }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000]"
+                >
+                  <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl border border-slate-200 flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: activeFilter.color }}></div>
+                    <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">
+                      Filtrando: {activeFilter.label}
+                    </span>
+                    <button 
+                      onClick={() => setTab('map')}
+                      className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+                    >
+                      <X size={14} className="text-slate-400" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {selectedIssue && (
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4">
                 <motion.div 
