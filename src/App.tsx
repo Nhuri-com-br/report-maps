@@ -23,7 +23,13 @@ import { Send } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [currentTab, setTab] = useState<string>('dashboard');
+  const [currentTab, setCurrentTab] = useState<string>('dashboard');
+  const setTab = (newTab: string) => {
+    if (newTab !== 'forum') {
+      setSelectedIssueForForum(null);
+    }
+    setCurrentTab(newTab);
+  };
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<UrbanIssue | null>(null);
   const [issues, setIssues] = useState<UrbanIssue[]>([]);
@@ -352,22 +358,70 @@ export default function App() {
         return (
           <div className="p-8 max-w-4xl mx-auto h-full flex flex-col">
             {!selectedIssueForForum ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center shadow-inner">
-                  <MessageSquare size={40} />
-                </div>
-                <div className="space-y-2">
+              <div className="flex-1 flex flex-col space-y-6">
+                <header className="space-y-2">
                   <h2 className="text-2xl font-bold text-slate-900">Fórum de Discussão</h2>
-                  <p className="text-slate-500 max-w-sm">
-                    Selecione uma ocorrência no mapa ou na visão geral para iniciar ou participar de uma discussão.
+                  <p className="text-sm text-slate-500">
+                    Selecione uma das ocorrências abaixo para ver os comentários ou participar da discussão.
                   </p>
+                </header>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {issues.filter(i => i.commentsCount && i.commentsCount > 0).length === 0 ? (
+                    <div className="col-span-full py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
+                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-300 shadow-sm">
+                        <MessageSquare size={32} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-slate-600 font-bold">Nenhuma discussão ativa</p>
+                        <p className="text-slate-400 text-xs text-center max-w-[240px]">
+                          Vá para o mapa ou visão geral e seja o primeiro a comentar em uma ocorrência!
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => setTab('dashboard')}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                      >
+                        Ver Ocorrências
+                      </button>
+                    </div>
+                  ) : (
+                    issues.filter(i => i.commentsCount && i.commentsCount > 0).map(issue => (
+                      <motion.div 
+                        key={issue.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={() => setSelectedIssueForForum(issue)}
+                        className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer flex gap-4 group"
+                      >
+                        <div className="w-16 h-16 rounded-xl bg-slate-50 shrink-0 overflow-hidden border border-slate-100 flex items-center justify-center text-slate-400">
+                          {issue.imageUrl ? (
+                            <img src={issue.imageUrl} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            (() => {
+                              const it = ISSUE_TYPES.find(t => t.type === issue.type);
+                              return it && <it.icon size={24} />;
+                            })()
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{issue.title}</h4>
+                            <div className="flex items-center gap-1 text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-black">
+                              <MessageCircle size={10} /> {issue.commentsCount}
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{issue.description}</p>
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{issue.reporterName}</span>
+                            <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                            <span className="text-[9px] font-medium text-slate-300">{new Date(issue.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
                 </div>
-                <button 
-                  onClick={() => setTab('dashboard')}
-                  className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-                >
-                  Ver Ocorrências
-                </button>
               </div>
             ) : (
               <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -409,10 +463,7 @@ export default function App() {
                     </div>
                   ) : (
                     comments.map(comment => {
-                      const isCommentAdmin = comment.userId === 'yuridragoni6@gmail.com' || comment.userName === 'Administrador'; // Fallback check
-                      // Actually, it's better to check by specific admin email if available in the comment, but for now we use the email we know
-                      const isAdminComment = comment.userId === '4V6jZtX...' /* we don't have the UID easily, but we know the email */
-                      // Let's just use the current isAdminUser check if it was them, but the comment persistent data is better
+                      const isCommentAdmin = comment.userEmail === 'yuridragoni6@gmail.com' || comment.userName === 'Administrador';
                       
                       return (
                         <div key={comment.id} className={cn(
@@ -422,10 +473,10 @@ export default function App() {
                           <div className="flex items-center gap-2 px-1">
                             <span className={cn(
                               "text-[10px] font-bold uppercase tracking-widest",
-                              comment.userId === 'yuridragoni6@gmail.com' || comment.userName === 'Administrador' ? "text-blue-600" : "text-slate-400"
+                              isCommentAdmin ? "text-blue-600" : "text-slate-400"
                             )}>
                               {comment.userName}
-                              {(comment.userId === 'yuridragoni6@gmail.com' || comment.userName === 'Administrador') && (
+                              {isCommentAdmin && (
                                 <span className="ml-1 bg-blue-50 text-blue-600 px-1 rounded border border-blue-100 text-[8px]">ADM</span>
                               )}
                             </span>

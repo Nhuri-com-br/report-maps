@@ -22,6 +22,7 @@ export interface UrbanIssue {
   status: 'pending' | 'in_progress' | 'solved';
   likesCount: number;
   likedBy: string[];
+  commentsCount?: number;
 }
 
 export interface Comment {
@@ -29,6 +30,7 @@ export interface Comment {
   issueId: string;
   userId: string;
   userName: string;
+  userEmail?: string;
   text: string;
   createdAt: number;
 }

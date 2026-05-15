@@ -12,7 +12,9 @@ import {
   onSnapshot,
   serverTimestamp,
   doc,
-  setDoc
+  setDoc,
+  increment,
+  updateDoc
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Comment } from '../types';
@@ -45,6 +47,7 @@ export const commentService = {
       issueId,
       userId: auth.currentUser.uid,
       userName: auth.currentUser.displayName || 'Anônimo',
+      userEmail: auth.currentUser.email || undefined,
       text,
       createdAt: serverTimestamp(),
     };
@@ -54,6 +57,12 @@ export const commentService = {
     
     try {
       await setDoc(doc(db, 'issues', issueId, 'comments', docId), { ...commentData, id: docId });
+      
+      // Update issue comment count
+      await updateDoc(doc(db, 'issues', issueId), {
+        commentsCount: increment(1)
+      });
+      
       return docId;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);

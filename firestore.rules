@@ -30,7 +30,7 @@ service cloud.firestore {
       let baseKeys = ['id', 'type', 'title', 'description', 'location', 'reporterId', 'reporterName', 'createdAt', 'status', 'likesCount', 'likedBy'];
       
       return data.keys().hasAll(baseKeys)
-        && data.keys().size() >= 11 && data.keys().size() <= 14
+        && data.keys().size() >= 11 && data.keys().size() <= 15
         && data.id is string && data.id.size() <= 128
         && data.type in ['pothole', 'flooding', 'power_outage', 'fire', 'light_failure', 'garbage', 'other']
         && data.title is string && data.title.size() <= 200
@@ -44,16 +44,18 @@ service cloud.firestore {
         && data.likedBy is list
         && (!('address' in data) || data.address is string)
         && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1048576))
-        && (!('updatedAt' in data) || data.updatedAt is timestamp);
+        && (!('updatedAt' in data) || data.updatedAt is timestamp)
+        && (!('commentsCount' in data) || data.commentsCount is number);
     }
 
     function isValidComment(data) {
       return data.keys().hasAll(['id', 'issueId', 'userId', 'userName', 'text', 'createdAt'])
-        && data.keys().size() == 6
+        && data.keys().size() >= 6 && data.keys().size() <= 7
         && data.id is string && data.id.size() <= 128
         && data.issueId is string && data.issueId.size() <= 128
         && data.userId == request.auth.uid
         && data.userName is string && data.userName.size() <= 100
+        && (!('userEmail' in data) || (data.userEmail is string && data.userEmail == request.auth.token.email))
         && data.text is string && data.text.size() <= 1000
         && data.createdAt == request.time;
     }
@@ -71,8 +73,8 @@ service cloud.firestore {
       allow update: if isSignedIn() 
         && isValidUrbanIssue(request.resource.data)
         && (
-          // Action: Like/Unlike
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'likedBy']))
+          // Action: Like/Unlike or Comments Count
+          (request.resource.data.diff(resource.data).affectedKeys().hasAll(['likesCount', 'likedBy']) || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount']))
           ||
           // Action: Status Update (Admin or Owner)
           ((isOwner(resource.data.reporterId) || isAdmin()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
