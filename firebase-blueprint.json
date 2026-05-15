@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "UrbanIssue": {
+      "title": "Urban Issue",
+      "description": "Represents an urban problem reported by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "enum": ["pothole", "flooding", "power_outage", "fire", "light_failure", "garbage", "other"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          },
+          "required": ["lat", "lng"]
+        },
+        "address": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "reporterId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "status": { "enum": ["pending", "in_progress", "solved"] },
+        "likesCount": { "type": "number" },
+        "likedBy": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "type", "title", "description", "location", "reporterId", "createdAt", "status"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on an urban issue.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "issueId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "issueId", "userId", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/issues/{issueId}": {
+      "schema": "UrbanIssue",
+      "description": "Collection of all urban issues."
+    },
+    "/issues/{issueId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Subcollection of comments for a specific issue."
+    }
+  }
+}

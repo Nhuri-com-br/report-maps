@@ -1,0 +1,8 @@
+{
+  "name": "Report Maps",
+  "description": "Uma plataforma colaborativa para relato e acompanhamento de problemas urbanos como buracos, alagamentos e falta de iluminação, facilitando a comunicação com órgãos públicos.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": []
+}

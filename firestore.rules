@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definition
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Phase 4: Validation Blueprints
+    function isValidUrbanIssue(data) {
+      let baseKeys = ['id', 'type', 'title', 'description', 'location', 'reporterId', 'reporterName', 'createdAt', 'status', 'likesCount', 'likedBy'];
+      
+      return data.keys().hasAll(baseKeys)
+        && data.keys().size() >= 11 && data.keys().size() <= 13
+        && data.id is string && data.id.size() <= 128
+        && data.type in ['pothole', 'flooding', 'power_outage', 'fire', 'light_failure', 'garbage', 'other']
+        && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.location.lat is number && data.location.lng is number
+        && data.reporterId == request.auth.uid
+        && data.reporterName is string && data.reporterName.size() <= 100
+        && data.createdAt == request.time
+        && data.status in ['pending', 'in_progress', 'solved']
+        && data.likesCount is number
+        && data.likedBy is list
+        && (!('address' in data) || data.address is string)
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1048576));
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['id', 'issueId', 'userId', 'userName', 'text', 'createdAt'])
+        && data.keys().size() == 6
+        && data.id is string && data.id.size() <= 128
+        && data.issueId is string && data.issueId.size() <= 128
+        && data.userId == request.auth.uid
+        && data.userName is string && data.userName.size() <= 100
+        && data.text is string && data.text.size() <= 1000
+        && data.createdAt == request.time;
+    }
+
+    // Rules for Issues
+    match /issues/{issueId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() 
+        && isValidId(issueId) 
+        && isValidUrbanIssue(request.resource.data);
+      
+      allow update: if isSignedIn() 
+        && (
+          // Action: Like/Unlike
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'likedBy']))
+          ||
+          // Action: Status Update (Admin or Owner)
+          (isOwner(resource.data.reporterId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+        );
+
+      // Rules for Comments
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() 
+          && isValidId(commentId) 
+          && isValidComment(request.resource.data);
+        allow delete: if isSignedIn() && isOwner(resource.data.userId);
+      }
+    }
+    
+    // User profile safety (if needed in future)
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+    }
+  }
+}
