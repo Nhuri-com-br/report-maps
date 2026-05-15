@@ -50,7 +50,9 @@ export function Header({ currentTab, setTab, onReportClick }: { currentTab: stri
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-xs font-bold leading-none">{user.displayName?.split(' ')[0]}</p>
-              <p className="text-[10px] text-slate-400 font-semibold mt-1">Cidadão Ativo</p>
+              <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                {user.email === 'yuridragoni6@gmail.com' ? 'Administrador' : 'Cidadão Ativo'}
+              </p>
             </div>
             <img 
               src={user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`} 

@@ -117,6 +117,21 @@ export function Sidebar({ currentTab, setTab }: { currentTab: string, setTab: (t
           onClick={() => setTab('map_garbage')} 
           collapsed={isCollapsed}
         />
+        <div className="h-px bg-slate-100 my-4 mx-2" />
+        <SidebarItem 
+          icon={MessageSquare} 
+          label="Fórum" 
+          active={currentTab === 'forum'} 
+          onClick={() => setTab('forum')} 
+          collapsed={isCollapsed}
+        />
+        <SidebarItem 
+          icon={Info} 
+          label="Sobre" 
+          active={currentTab === 'about'} 
+          onClick={() => setTab('about')} 
+          collapsed={isCollapsed}
+        />
       </nav>
 
       <div className="p-5 mt-auto">

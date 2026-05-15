@@ -11,12 +11,15 @@ import { Modal } from './components/Modal';
 import { ReportForm } from './components/ReportForm';
 import { UrbanIssue } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, MapPin, Calendar, ThumbsUp, MessageCircle, X, Info, Zap, Shield, Map as MapIcon } from 'lucide-react';
+import { AlertTriangle, MapPin, Calendar, ThumbsUp, MessageCircle, X, Info, Zap, Shield, Map as MapIcon, MessageSquare } from 'lucide-react';
 import { ISSUE_TYPES, APP_NAME } from './constants';
 import { cn } from './lib/utils';
 import { auth } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { issueService } from './services/issueService';
+import { commentService } from './services/commentService';
+import { Comment as IssueComment } from './types';
+import { Send } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -25,6 +28,19 @@ export default function App() {
   const [selectedIssue, setSelectedIssue] = useState<UrbanIssue | null>(null);
   const [issues, setIssues] = useState<UrbanIssue[]>([]);
   const [clickedLocation, setClickedLocation] = useState<{ lat: number, lng: number } | undefined>(undefined);
+  const [selectedIssueForForum, setSelectedIssueForForum] = useState<UrbanIssue | null>(null);
+  const [comments, setComments] = useState<IssueComment[]>([]);
+  const [newComment, setNewComment] = useState('');
+
+  const isAdminUser = () => user?.email === 'yuridragoni6@gmail.com';
+
+  const handleUpdateStatus = async (issueId: string, newStatus: 'pending' | 'in_progress' | 'solved') => {
+    try {
+      await issueService.updateStatus(issueId, newStatus);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const filteredIssues = issues.filter(issue => {
     if (currentTab === 'dashboard' || currentTab === 'map') return true;
@@ -61,6 +77,25 @@ export default function App() {
       unsubscribeIssues();
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedIssueForForum) {
+      const unsubscribeComments = commentService.subscribeToComments(selectedIssueForForum.id, (fetchedComments) => {
+        setComments(fetchedComments);
+      });
+      return () => unsubscribeComments();
+    }
+  }, [selectedIssueForForum]);
+
+  const handleSendComment = async () => {
+    if (!user || !selectedIssueForForum || !newComment.trim()) return;
+    try {
+      await commentService.addComment(selectedIssueForForum.id, newComment);
+      setNewComment('');
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const handleCreateIssue = async (data: any) => {
     if (!user) {
@@ -115,15 +150,15 @@ export default function App() {
                 <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
                   <MapPin size={20} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">4</h3>
-                <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold">Bairros Afetados</p>
+                <h3 className="text-2xl font-bold text-slate-900">{new Set(issues.filter(i => i.status !== 'solved').map(i => i.type)).size}</h3>
+                <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold">Categorias Ativas</p>
               </div>
               <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center mb-4">
                   <ThumbsUp size={20} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">0</h3>
-                <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold">Solucionados Hoje</p>
+                <h3 className="text-2xl font-bold text-slate-900">{issues.filter(i => i.status === 'solved').length}</h3>
+                <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold">Total Solucionados</p>
               </div>
             </div>
 
@@ -181,9 +216,23 @@ export default function App() {
                         >
                           <ThumbsUp size={14} className={cn(isLiked && "fill-white")} /> {issue.likesCount}
                         </button>
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-semibold hover:bg-slate-100">
+                        <button 
+                          onClick={() => {
+                            setSelectedIssueForForum(issue);
+                            setTab('forum');
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-semibold hover:bg-slate-100"
+                        >
                           <MessageCircle size={14} /> Comentar
                         </button>
+                        {isAdminUser() && issue.status !== 'solved' && (
+                          <button 
+                            onClick={() => handleUpdateStatus(issue.id, 'solved')}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-600 text-white text-xs font-bold hover:bg-green-700 shadow-sm"
+                          >
+                            Marcar como Resolvido
+                          </button>
+                        )}
                       </div>
                     </motion.div>
                   );
@@ -264,14 +313,178 @@ export default function App() {
                       </button>
                     </div>
                     <p className="text-sm text-slate-600">{selectedIssue.description}</p>
+                    {isAdminUser() && selectedIssue.status !== 'solved' && (
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleUpdateStatus(selectedIssue.id, 'in_progress')}
+                          className="flex-1 bg-amber-500 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors"
+                        >
+                          Em Progresso
+                        </button>
+                        <button 
+                          onClick={() => handleUpdateStatus(selectedIssue.id, 'solved')}
+                          className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors"
+                        >
+                          Resolvido
+                        </button>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                       <span className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{selectedIssue.reporterName}</span>
-                      <button className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">
-                        Ver detalhes
+                      <button 
+                        onClick={() => {
+                          setSelectedIssueForForum(selectedIssue);
+                          setTab('forum');
+                          setSelectedIssue(null);
+                        }}
+                        className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-sm"
+                      >
+                        Ver detalhes / Comentar
                       </button>
                     </div>
                   </div>
                 </motion.div>
+              </div>
+            )}
+          </div>
+        );
+      case 'forum':
+        return (
+          <div className="p-8 max-w-4xl mx-auto h-full flex flex-col">
+            {!selectedIssueForForum ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+                <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center shadow-inner">
+                  <MessageSquare size={40} />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold text-slate-900">Fórum de Discussão</h2>
+                  <p className="text-slate-500 max-w-sm">
+                    Selecione uma ocorrência no mapa ou na visão geral para iniciar ou participar de uma discussão.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setTab('dashboard')}
+                  className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                >
+                  Ver Ocorrências
+                </button>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <button 
+                      onClick={() => setSelectedIssueForForum(null)}
+                      className="text-xs font-bold text-slate-400 flex items-center gap-1 hover:text-slate-600 transition-colors uppercase tracking-widest"
+                    >
+                      <Info size={12} /> Todas as discussões
+                    </button>
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-widest">
+                       Discussão Ativa
+                    </span>
+                  </div>
+                  <div className="flex gap-4">
+                    {selectedIssueForForum.imageUrl ? (
+                      <img src={selectedIssueForForum.imageUrl} className="w-20 h-20 object-cover rounded-xl shadow-sm border border-white" alt="" />
+                    ) : (
+                      <div className="w-20 h-20 bg-blue-600 rounded-xl flex items-center justify-center text-white shrink-0">
+                        {(() => {
+                          const it = ISSUE_TYPES.find(t => t.type === selectedIssueForForum.type);
+                          return it && <it.icon size={32} />;
+                        })()}
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-bold text-slate-900">{selectedIssueForForum.title}</h3>
+                      <p className="text-sm text-slate-500 line-clamp-2">{selectedIssueForForum.description}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {comments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-300 space-y-2 py-12">
+                      <MessageCircle size={32} className="opacity-20" />
+                      <p className="text-sm font-medium">Nenhum comentário ainda. Seja o primeiro a comentar!</p>
+                    </div>
+                  ) : (
+                    comments.map(comment => {
+                      const isCommentAdmin = comment.userId === 'yuridragoni6@gmail.com' || comment.userName === 'Administrador'; // Fallback check
+                      // Actually, it's better to check by specific admin email if available in the comment, but for now we use the email we know
+                      const isAdminComment = comment.userId === '4V6jZtX...' /* we don't have the UID easily, but we know the email */
+                      // Let's just use the current isAdminUser check if it was them, but the comment persistent data is better
+                      
+                      return (
+                        <div key={comment.id} className={cn(
+                          "flex flex-col gap-1 max-w-[80%]",
+                          comment.userId === user?.uid ? "ml-auto items-end" : "items-start"
+                        )}>
+                          <div className="flex items-center gap-2 px-1">
+                            <span className={cn(
+                              "text-[10px] font-bold uppercase tracking-widest",
+                              comment.userId === 'yuridragoni6@gmail.com' || comment.userName === 'Administrador' ? "text-blue-600" : "text-slate-400"
+                            )}>
+                              {comment.userName}
+                              {(comment.userId === 'yuridragoni6@gmail.com' || comment.userName === 'Administrador') && (
+                                <span className="ml-1 bg-blue-50 text-blue-600 px-1 rounded border border-blue-100 text-[8px]">ADM</span>
+                              )}
+                            </span>
+                            <span className="text-[9px] text-slate-300 font-medium">{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                          <div className={cn(
+                            "px-4 py-2.5 rounded-2xl text-sm shadow-sm",
+                            comment.userId === user?.uid 
+                              ? "bg-blue-600 text-white rounded-tr-none" 
+                              : "bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200"
+                          )}>
+                            {comment.text}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="p-4 border-t border-slate-100 bg-white">
+                  {!user ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-3">
+                      <p className="text-xs font-semibold text-slate-600">Você precisa estar logado para participar da discussão.</p>
+                      <button 
+                        onClick={() => window.location.reload()} // Easy way to trigger auth popup if it's not showing
+                        className="bg-blue-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm transition-all"
+                      >
+                        Fazer Login com Google
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <textarea 
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Escreva algo sobre esta ocorrência..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-h-[80px] resize-none"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendComment();
+                          }
+                        }}
+                      />
+                      <button 
+                        onClick={handleSendComment}
+                        disabled={!newComment.trim()}
+                        className="absolute right-3 bottom-3 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:shadow-none"
+                      >
+                        <Send size={18} />
+                      </button>
+                    </div>
+                  )}
+                  {user && (
+                    <p className="text-[9px] text-slate-400 mt-2 text-center font-medium uppercase tracking-widest">
+                      Comentando como <span className="text-slate-900">{user.displayName}</span> {isAdminUser() && " (Administrador)"}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>

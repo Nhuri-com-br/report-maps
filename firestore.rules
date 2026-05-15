@@ -19,25 +19,32 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isAdmin() {
+      return isSignedIn() && 
+        request.auth.token.email == 'yuridragoni6@gmail.com' && 
+        request.auth.token.email_verified == true;
+    }
+
     // Phase 4: Validation Blueprints
     function isValidUrbanIssue(data) {
       let baseKeys = ['id', 'type', 'title', 'description', 'location', 'reporterId', 'reporterName', 'createdAt', 'status', 'likesCount', 'likedBy'];
       
       return data.keys().hasAll(baseKeys)
-        && data.keys().size() >= 11 && data.keys().size() <= 13
+        && data.keys().size() >= 11 && data.keys().size() <= 14
         && data.id is string && data.id.size() <= 128
         && data.type in ['pothole', 'flooding', 'power_outage', 'fire', 'light_failure', 'garbage', 'other']
         && data.title is string && data.title.size() <= 200
         && data.description is string && data.description.size() <= 2000
         && data.location.lat is number && data.location.lng is number
-        && data.reporterId == request.auth.uid
+        && data.reporterId is string && data.reporterId.size() <= 128
         && data.reporterName is string && data.reporterName.size() <= 100
-        && data.createdAt == request.time
+        && data.createdAt is timestamp
         && data.status in ['pending', 'in_progress', 'solved']
         && data.likesCount is number
         && data.likedBy is list
         && (!('address' in data) || data.address is string)
-        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1048576));
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1048576))
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
     function isValidComment(data) {
@@ -53,24 +60,27 @@ service cloud.firestore {
 
     // Rules for Issues
     match /issues/{issueId} {
-      allow read: if isSignedIn();
+      allow read: if true; // Public view-only access
       
       allow create: if isSignedIn() 
         && isValidId(issueId) 
-        && isValidUrbanIssue(request.resource.data);
+        && isValidUrbanIssue(request.resource.data)
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.createdAt == request.time;
       
       allow update: if isSignedIn() 
+        && isValidUrbanIssue(request.resource.data)
         && (
           // Action: Like/Unlike
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'likedBy']))
           ||
           // Action: Status Update (Admin or Owner)
-          (isOwner(resource.data.reporterId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+          ((isOwner(resource.data.reporterId) || isAdmin()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
         );
 
       // Rules for Comments
       match /comments/{commentId} {
-        allow read: if isSignedIn();
+        allow read: if true; // Public read access for discussions
         allow create: if isSignedIn() 
           && isValidId(commentId) 
           && isValidComment(request.resource.data);
