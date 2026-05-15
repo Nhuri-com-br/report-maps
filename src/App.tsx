@@ -33,6 +33,7 @@ export default function App() {
     if (currentTab === 'map_flood') return issue.type === 'flooding';
     if (currentTab === 'map_pothole') return issue.type === 'pothole';
     if (currentTab === 'map_power') return issue.type === 'power_outage';
+    if (currentTab === 'map_garbage') return issue.type === 'garbage';
     
     return true;
   });
@@ -42,6 +43,7 @@ export default function App() {
     if (currentTab === 'map_flood') return 'Alagamentos';
     if (currentTab === 'map_pothole') return 'Buracos';
     if (currentTab === 'map_power') return 'Energia';
+    if (currentTab === 'map_garbage') return 'Lixo';
     return '';
   };
 

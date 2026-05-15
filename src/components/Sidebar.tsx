@@ -45,7 +45,7 @@ function SidebarItem({ icon: Icon, label, active, onClick, collapsed, variant = 
   );
 }
 
-import { LayoutPanelLeft, Map as MapIcon, ClipboardList, MessageSquare, Info, Settings, LogOut, Menu, Flame, Droplets, AlertTriangle, Zap } from 'lucide-react';
+import { LayoutPanelLeft, Map as MapIcon, ClipboardList, MessageSquare, Info, Settings, LogOut, Menu, Flame, Droplets, AlertTriangle, Zap, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export function Sidebar({ currentTab, setTab }: { currentTab: string, setTab: (tab: any) => void }) {
@@ -69,7 +69,7 @@ export function Sidebar({ currentTab, setTab }: { currentTab: string, setTab: (t
         </button>
       </div>
 
-      <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 px-4 space-y-2 overflow-y-auto font-sans">
         <SidebarItem 
           icon={LayoutPanelLeft} 
           label="Visão Geral" 
@@ -107,6 +107,14 @@ export function Sidebar({ currentTab, setTab }: { currentTab: string, setTab: (t
           variant="warning"
           active={currentTab === 'map_power'} 
           onClick={() => setTab('map_power')} 
+          collapsed={isCollapsed}
+        />
+        <SidebarItem 
+          icon={Trash2} 
+          label="Lixo" 
+          variant="success"
+          active={currentTab === 'map_garbage'} 
+          onClick={() => setTab('map_garbage')} 
           collapsed={isCollapsed}
         />
       </nav>
