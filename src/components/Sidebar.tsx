@@ -125,7 +125,10 @@ export function Sidebar({ currentTab, setTab }: { currentTab: string, setTab: (t
             </button>
           </div>
         ) : (
-          <button className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg mx-auto">
+          <button 
+            onClick={() => setTab('map')}
+            className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg mx-auto"
+          >
             <Plus size={20} />
           </button>
         )}

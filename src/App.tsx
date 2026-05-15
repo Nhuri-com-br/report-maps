@@ -27,17 +27,23 @@ export default function App() {
   const [clickedLocation, setClickedLocation] = useState<{ lat: number, lng: number } | undefined>(undefined);
 
   const filteredIssues = issues.filter(issue => {
-    const filterType = currentTab.replace('map_', '');
+    if (currentTab === 'dashboard' || currentTab === 'map') return true;
     
-    // Support both direct types and mapping for standard categories
-    if (filterType === 'fire') return issue.type === 'fire';
-    if (filterType === 'flood') return issue.type === 'flooding';
-    if (filterType === 'pothole') return issue.type === 'pothole';
-    if (filterType === 'power') return issue.type === 'power_outage';
+    if (currentTab === 'map_fire') return issue.type === 'fire';
+    if (currentTab === 'map_flood') return issue.type === 'flooding';
+    if (currentTab === 'map_pothole') return issue.type === 'pothole';
+    if (currentTab === 'map_power') return issue.type === 'power_outage';
     
-    // If it's just 'map' or 'dashboard', show all
     return true;
   });
+
+  const getActiveFilterLabel = () => {
+    if (currentTab === 'map_fire') return 'Queimadas';
+    if (currentTab === 'map_flood') return 'Alagamentos';
+    if (currentTab === 'map_pothole') return 'Buracos';
+    if (currentTab === 'map_power') return 'Energia';
+    return '';
+  };
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -122,7 +128,7 @@ export default function App() {
             <section className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-slate-900">
-                  {currentTab === 'dashboard' ? 'Relatos Recentes' : `Relatos de ${ISSUE_TYPES.find(t => t.type === currentTab.replace('map_', '').replace('fire', 'fire').replace('flood', 'flooding').replace('pothole', 'pothole').replace('power', 'power_outage'))?.label || ''}`}
+                  {currentTab === 'dashboard' ? 'Relatos Recentes' : `Relatos de ${getActiveFilterLabel()}`}
                 </h2>
                 <button onClick={() => setTab('map')} className="text-blue-600 text-sm font-semibold hover:underline">Ver no Mapa</button>
               </div>
