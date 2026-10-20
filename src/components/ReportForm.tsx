@@ -12,8 +12,9 @@ import { cn } from '@/src/lib/utils';
 
 interface ReportFormProps {
   onSubmit: (data: any) => void;
-  initialLocation?: { lat: number, lng: number };
+  initialLocation: { lat: number; lng: number };
 }
+
 
 export function ReportForm({ onSubmit, initialLocation }: ReportFormProps) {
   const [type, setType] = useState<IssueType>('pothole');

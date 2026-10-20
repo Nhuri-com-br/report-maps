@@ -660,7 +660,7 @@ export default function App() {
       </div>
       
       <div className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0">
-        <Header currentTab={currentTab} setTab={setTab} onReportClick={() => setIsReportModalOpen(true)} />
+        <Header currentTab={currentTab} setTab={setTab} />
         
         <div className="flex flex-1 overflow-hidden">
           <main className="flex-1 overflow-y-auto relative">
@@ -754,7 +754,7 @@ export default function App() {
         <ReportForm onSubmit={handleCreateIssue} initialLocation={clickedLocation} />
       </Modal>
 
-      <MobileNav currentTab={currentTab} setTab={setTab} onReportClick={() => setIsReportModalOpen(true)} />
+      <MobileNav currentTab={currentTab} setTab={setTab} />
     </div>
   );
 }
