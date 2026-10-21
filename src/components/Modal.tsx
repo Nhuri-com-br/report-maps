@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-
-import { X, AlertCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
 interface ModalProps {
@@ -18,40 +17,58 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-md" }: ModalProps) {
+  // Fecha com a tecla Esc
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4"
+        >
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
             className={cn(
-              "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full z-[60] bg-white rounded-2xl shadow-2xl overflow-hidden",
+              "w-full bg-white shadow-2xl flex flex-col overflow-hidden",
+              "max-h-[92dvh] rounded-t-2xl sm:max-h-[90dvh] sm:rounded-2xl",
               maxWidth
             )}
           >
-            <div className="p-4 border-bottom border-slate-100 flex items-center justify-between">
+            {/* Cabeçalho fixo */}
+            <div className="shrink-0 p-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-              <button 
+              <button
                 onClick={onClose}
-                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
+                aria-label="Fechar"
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6">
+
+            {/* Corpo com rolagem */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-6">
               {children}
             </div>
           </motion.div>
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   );
