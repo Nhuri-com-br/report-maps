@@ -30,7 +30,7 @@ export interface Comment {
   issueId: string;
   userId: string;
   userName: string;
-  userEmail?: string;
+  fromAdmin?: boolean;
   text: string;
   createdAt: number;
 }
