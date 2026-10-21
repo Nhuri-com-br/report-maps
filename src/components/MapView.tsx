@@ -4,7 +4,10 @@
  */
 
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { auth, loginWithGoogle, getLoginErrorMessage } from '../lib/firebase';
+// Removed duplicate import
+import { X } from 'lucide-react';
 import { UrbanIssue } from '../types';
 import { ISSUE_TYPES } from '../constants';
 import L from 'leaflet';
@@ -24,10 +27,13 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-function MapEvents({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
+function MapEvents({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({
     click: (e) => {
-      onMapClick?.(e.latlng.lat, e.latlng.lng);
+      const target = e.originalEvent?.target as HTMLElement | null;
+      // ignora cliques vindos do balão (Confirmar/Cancelar) ou de marcadores
+      if (target?.closest('.leaflet-popup, .leaflet-marker-icon')) return;
+      onMapClick(e.latlng.lat, e.latlng.lng);
     },
   });
   return null;
@@ -39,6 +45,52 @@ export function MapView({ issues, onSelectIssue, onMapClick }: {
   onMapClick?: (lat: number, lng: number) => void
 }) {
   const [center] = useState<[number, number]>([-23.5505, -46.6333]); // Default to São Paulo
+  const [tempMarker, setTempMarker] = useState<{ lat: number; lng: number } | null>(null);
+  const markerRef = useRef<L.Marker>(null);
+  const [showHint, setShowHint] = useState(true);
+  const ignoreMapClickUntil = useRef(0);
+
+    // Abre o balão automaticamente quando o marcador temporário aparece
+  useEffect(() => {
+    if (!tempMarker) return;
+    const timer = setTimeout(() => {
+      markerRef.current?.openPopup();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [tempMarker]);
+
+  // Hide hint when marker is active
+  useEffect(() => {
+    if (tempMarker) setShowHint(false);
+  }, [tempMarker]);
+
+    // Map click creates/updates temporary marker
+  const handleMapClick = (lat: number, lng: number) => {
+    if (Date.now() < ignoreMapClickUntil.current) return;
+    setTempMarker({ lat, lng });
+  };
+
+  // Confirmar: só faz login se ainda não houver usuário logado
+  const handleConfirm = async () => {
+    if (!tempMarker) return;
+    ignoreMapClickUntil.current = Date.now() + 400;
+    try {
+      if (!auth.currentUser) {
+        await loginWithGoogle();
+      }
+        } catch (err) {
+      const msg = getLoginErrorMessage(err);
+      if (msg) alert(msg);
+      return; // mantém o marcador
+    }
+    onMapClick?.(tempMarker.lat, tempMarker.lng);
+    setTempMarker(null);
+  };
+
+  const handleCancel = () => {
+    ignoreMapClickUntil.current = Date.now() + 400;
+    setTempMarker(null);
+  };
 
   return (
     <div className="w-full h-full relative">
@@ -52,8 +104,47 @@ export function MapView({ issues, onSelectIssue, onMapClick }: {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapEvents onMapClick={onMapClick} />
+        <MapEvents onMapClick={handleMapClick} />
         
+        {tempMarker && (
+          <Marker
+            position={[tempMarker.lat, tempMarker.lng]}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                const marker = e.target as L.Marker;
+                const { lat, lng } = marker.getLatLng();
+                setTempMarker({ lat, lng });
+              },
+            }}
+            ref={(el) => {
+              if (el) {
+                markerRef.current = el;
+                // Open popup automatically when marker is added or updated
+                el.openPopup();
+              } else {
+                markerRef.current = null;
+              }
+            }}
+          >
+            <Popup closeButton={false} autoClose={false} closeOnEscapeKey={false} className="!pointer-events-auto">
+              <div className="flex flex-col gap-2">
+                <button
+                  className="bg-blue-600 text-white py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  onClick={handleConfirm}
+                >
+                  Confirmar
+                </button>
+                <button
+                  className="bg-gray-300 text-gray-800 py-1 px-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  onClick={handleCancel}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        )}
         {issues.map(issue => {
           const config = ISSUE_TYPES.find(t => t.type === issue.type);
           

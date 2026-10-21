@@ -12,8 +12,9 @@ import { cn } from '@/src/lib/utils';
 
 interface ReportFormProps {
   onSubmit: (data: any) => void;
-  initialLocation?: { lat: number, lng: number };
+  initialLocation: { lat: number; lng: number };
 }
+
 
 export function ReportForm({ onSubmit, initialLocation }: ReportFormProps) {
   const [type, setType] = useState<IssueType>('pothole');
@@ -180,12 +181,14 @@ export function ReportForm({ onSubmit, initialLocation }: ReportFormProps) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all active:scale-[0.98]"
-      >
-        Publicar Relato
-      </button>
+           <div className="sticky bottom-0 -mx-6 -mb-6 px-6 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white border-t border-slate-100">
+        <button
+          type="submit"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+        >
+          Publicar Relato
+        </button>
+      </div>
     </form>
   );
 }

@@ -3,19 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Search, Bell, User, Plus, LogOut } from 'lucide-react';
+
+import { Search, Bell, User, LogOut } from 'lucide-react';
 import { APP_NAME } from '../constants';
-import { auth, loginWithGoogle, logout } from '../lib/firebase';
+import { auth, loginWithGoogle, logout, getLoginErrorMessage } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { cn } from '../lib/utils';
 
-export function Header({ currentTab, setTab, onReportClick }: { currentTab: string, setTab: (tab: any) => void, onReportClick: () => void }) {
+export function Header({ currentTab, setTab }: { currentTab: string, setTab: (tab: any) => void }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
+
+    const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      const msg = getLoginErrorMessage(error);
+      if (msg) alert(msg);
+    }
+  };
 
   return (
     <header className="h-16 bg-slate-900 border-b border-slate-700 px-6 flex items-center justify-between sticky top-0 z-30 text-white shadow-lg">
@@ -36,13 +46,7 @@ export function Header({ currentTab, setTab, onReportClick }: { currentTab: stri
       </div>
 
       <div className="flex items-center gap-4">
-        <button 
-          onClick={onReportClick}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg flex items-center gap-2 text-xs font-bold transition-all shadow-lg shadow-blue-900/20 active:scale-95 uppercase tracking-wider"
-        >
-          <Plus size={16} />
-          <span className="hidden sm:inline">Reportar Agora</span>
-        </button>
+
         
         <div className="h-8 w-[1px] bg-slate-700 mx-2" />
         

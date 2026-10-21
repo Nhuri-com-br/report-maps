@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
+import { useIsAdmin } from './lib/useIsAdmin';
 import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -15,7 +17,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, MapPin, Calendar, ThumbsUp, MessageCircle, X, Info, Zap, Shield, Map as MapIcon, MessageSquare } from 'lucide-react';
 import { ISSUE_TYPES, APP_NAME } from './constants';
 import { cn } from './lib/utils';
-import { auth } from './lib/firebase';
+import { auth, loginWithGoogle, getLoginErrorMessage } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { issueService } from './services/issueService';
 import { commentService } from './services/commentService';
@@ -39,15 +41,17 @@ export default function App() {
   const [comments, setComments] = useState<IssueComment[]>([]);
   const [newComment, setNewComment] = useState('');
 
-  const isAdminUser = () => user?.email === 'yuridragoni6@gmail.com';
+    const isAdmin = useIsAdmin(user);
+    const isAdminUser = () => isAdmin;
 
   const handleUpdateStatus = async (issueId: string, newStatus: 'pending' | 'in_progress' | 'solved') => {
-    try {
-      await issueService.updateStatus(issueId, newStatus);
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  try {
+    await issueService.updateStatus(issueId, newStatus);
+    if (selectedIssue?.id === issueId) setSelectedIssue(null); // fecha o card do mapa depois de mudar o status
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   const handleDeleteIssue = async (issueId: string) => {
     if (!isAdminUser()) return;
@@ -110,10 +114,19 @@ export default function App() {
   const handleSendComment = async () => {
     if (!user || !selectedIssueForForum || !newComment.trim()) return;
     try {
-      await commentService.addComment(selectedIssueForForum.id, newComment);
+      await commentService.addComment(selectedIssueForForum.id, newComment, isAdmin);
       setNewComment('');
     } catch (error) {
       console.error(error);
+    }
+  };
+
+    const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      const msg = getLoginErrorMessage(error);
+      if (msg) alert(msg);
     }
   };
 
@@ -501,7 +514,7 @@ export default function App() {
                     </div>
                   ) : (
                     comments.map(comment => {
-                      const isCommentAdmin = comment.userEmail === 'yuridragoni6@gmail.com' || comment.userName === 'Administrador';
+                      const isCommentAdmin = comment.fromAdmin === true;
                       
                       return (
                         <div key={comment.id} className={cn(
@@ -660,7 +673,7 @@ export default function App() {
       </div>
       
       <div className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0">
-        <Header currentTab={currentTab} setTab={setTab} onReportClick={() => setIsReportModalOpen(true)} />
+        <Header currentTab={currentTab} setTab={setTab} />
         
         <div className="flex flex-1 overflow-hidden">
           <main className="flex-1 overflow-y-auto relative">
@@ -754,7 +767,7 @@ export default function App() {
         <ReportForm onSubmit={handleCreateIssue} initialLocation={clickedLocation} />
       </Modal>
 
-      <MobileNav currentTab={currentTab} setTab={setTab} onReportClick={() => setIsReportModalOpen(true)} />
+      <MobileNav currentTab={currentTab} setTab={setTab} />
     </div>
   );
 }

@@ -138,13 +138,12 @@ export function Sidebar({ currentTab, setTab }: { currentTab: string, setTab: (t
         {!isCollapsed ? (
           <div className="bg-blue-600 rounded-2xl p-5 text-white shadow-xl shadow-blue-100 relative overflow-hidden group">
             <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all" />
-            <h3 className="font-bold text-sm mb-1 relative z-10">Novo Registro</h3>
-            <p className="text-[11px] text-blue-100 mb-4 relative z-10 font-medium">Encontrou um problema na sua rua? Informe agora.</p>
-            <button 
+            <h3 className="font-bold text-sm mb-1 relative z-10">Para reportar, abra o mapa e toque no local do problema</h3>
+            <button
               onClick={() => setTab('map')}
               className="w-full bg-white text-blue-600 font-bold py-2.5 rounded-xl text-xs shadow-sm hover:shadow-md transition-all active:scale-95 uppercase tracking-wider relative z-10"
             >
-              Reportar Agora
+              Ir para o mapa
             </button>
           </div>
         ) : (
