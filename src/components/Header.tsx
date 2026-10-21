@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
 import { Search, Bell, User, LogOut } from 'lucide-react';
 import { APP_NAME } from '../constants';
-import { auth, loginWithGoogle, logout } from '../lib/firebase';
+import { auth, loginWithGoogle, logout, getLoginErrorMessage } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { cn } from '../lib/utils';
@@ -16,6 +17,15 @@ export function Header({ currentTab, setTab }: { currentTab: string, setTab: (ta
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
+
+    const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      const msg = getLoginErrorMessage(error);
+      if (msg) alert(msg);
+    }
+  };
 
   return (
     <header className="h-16 bg-slate-900 border-b border-slate-700 px-6 flex items-center justify-between sticky top-0 z-30 text-white shadow-lg">

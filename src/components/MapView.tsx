@@ -5,7 +5,7 @@
 
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import { useRef, useState, useEffect } from 'react';
-import { auth, loginWithGoogle } from '../lib/firebase';
+import { auth, loginWithGoogle, getLoginErrorMessage } from '../lib/firebase';
 // Removed duplicate import
 import { X } from 'lucide-react';
 import { UrbanIssue } from '../types';
@@ -78,8 +78,9 @@ export function MapView({ issues, onSelectIssue, onMapClick }: {
       if (!auth.currentUser) {
         await loginWithGoogle();
       }
-    } catch (err) {
-      alert('Não foi possível entrar. Tente novamente.');
+        } catch (err) {
+      const msg = getLoginErrorMessage(err);
+      if (msg) alert(msg);
       return; // mantém o marcador
     }
     onMapClick?.(tempMarker.lat, tempMarker.lng);

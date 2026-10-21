@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { FirebaseError } from 'firebase/app';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
@@ -74,3 +75,20 @@ testConnection();
 
 export const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const logout = () => signOut(auth);
+
+// Traduz erros de login em mensagens em português. Retorna null quando deve ser ignorado.
+export function getLoginErrorMessage(error: unknown): string | null {
+  const code = error instanceof FirebaseError ? error.code : '';
+  switch (code) {
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return null; // usuário fechou a janela: não precisa avisar
+    case 'auth/unauthorized-domain':
+      return 'Este endereço não está autorizado para login. Acesse por localhost ou use o site publicado.';
+    case 'auth/popup-blocked':
+      return 'O navegador bloqueou a janela de login. Permita pop-ups para este site.';
+    default:
+      console.error('Erro de login:', error);
+      return 'Não foi possível entrar. Tente novamente.';
+  }
+}

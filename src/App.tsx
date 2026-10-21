@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, MapPin, Calendar, ThumbsUp, MessageCircle, X, Info, Zap, Shield, Map as MapIcon, MessageSquare } from 'lucide-react';
 import { ISSUE_TYPES, APP_NAME } from './constants';
 import { cn } from './lib/utils';
-import { auth } from './lib/firebase';
+import { auth, loginWithGoogle, getLoginErrorMessage } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { issueService } from './services/issueService';
 import { commentService } from './services/commentService';
@@ -114,6 +114,15 @@ export default function App() {
       setNewComment('');
     } catch (error) {
       console.error(error);
+    }
+  };
+
+    const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      const msg = getLoginErrorMessage(error);
+      if (msg) alert(msg);
     }
   };
 
