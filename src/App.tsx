@@ -40,17 +40,18 @@ export default function App() {
   const [comments, setComments] = useState<IssueComment[]>([]);
   const [newComment, setNewComment] = useState('');
 
-    const isAdmin = useIsAdmin(user);
-    const isAdminUser = () => isAdmin;
+  const isAdmin = useIsAdmin(user);
+  const isAdminUser = () => isAdmin;
 
   const handleUpdateStatus = async (issueId: string, newStatus: 'pending' | 'in_progress' | 'solved') => {
-  try {
-    await issueService.updateStatus(issueId, newStatus);
-    if (selectedIssue?.id === issueId) setSelectedIssue(null); // fecha o card do mapa depois de mudar o status
-  } catch (error) {
-    console.error(error);
-  }
-};
+    try {
+      await issueService.updateStatus(issueId, newStatus);
+      if (selectedIssue?.id === issueId) setSelectedIssue(null); // fecha o card depois de mudar o status
+    } catch (error) {
+      console.error(error);
+      alert('Não foi possível alterar o status. Tente novamente.');
+    }
+  };
 
   const handleDeleteIssue = async (issueId: string) => {
     if (!isAdminUser()) return;
@@ -104,6 +105,11 @@ export default function App() {
     };
   }, []);
 
+  // Mantém o card do mapa sincronizado com o banco (e fecha se o relato for apagado)
+  useEffect(() => {
+    setSelectedIssue(prev => (prev ? (issues.find(i => i.id === prev.id) ?? null) : prev));
+  }, [issues]);
+
   useEffect(() => {
     if (selectedIssueForForum) {
       const unsubscribeComments = commentService.subscribeToComments(selectedIssueForForum.id, (fetchedComments) => {
@@ -123,7 +129,7 @@ export default function App() {
     }
   };
 
-    const handleLogin = async () => {
+  const handleLogin = async () => {
     try {
       await loginWithGoogle();
     } catch (error) {
@@ -227,10 +233,10 @@ export default function App() {
                         <div className="flex items-center gap-2">
                           <h4 className="font-bold text-slate-900">{issue.title}</h4>
                           <span className={cn(
-                          "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                          STATUS_INFO[issue.status].className
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                            STATUS_INFO[issue.status].className
                           )}>
-                          {STATUS_INFO[issue.status].label}
+                            {STATUS_INFO[issue.status].label}
                           </span>
                         </div>
                         <p className="text-sm text-slate-600 line-clamp-2">{issue.description}</p>
@@ -361,14 +367,14 @@ export default function App() {
                     </div>
 
                     <span className={cn(
-                    "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                    STATUS_INFO[selectedIssue.status].className
+                      "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                      STATUS_INFO[selectedIssue.status].className
                     )}>
-                    {STATUS_INFO[selectedIssue.status].label}
+                      {STATUS_INFO[selectedIssue.status].label}
                     </span>
 
                     <p className="text-sm text-slate-600">{selectedIssue.description}</p>
-                      {selectedIssue.address && (
+                    {selectedIssue.address && (
                       <p className="text-xs text-slate-400 flex items-center gap-1">
                         <MapPin size={12} /> {selectedIssue.address}
                       </p>
@@ -376,21 +382,21 @@ export default function App() {
                     {isAdminUser() && (
                       <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
                         <div className="flex gap-2">
+                          {selectedIssue.status === 'pending' && (
+                            <button 
+                              onClick={() => handleUpdateStatus(selectedIssue.id, 'in_progress')}
+                              className="flex-1 bg-amber-500 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors"
+                            >
+                              Em Progresso
+                            </button>
+                          )}
                           {selectedIssue.status !== 'solved' && (
-                            <>
-                              <button 
-                                onClick={() => handleUpdateStatus(selectedIssue.id, 'in_progress')}
-                                className="flex-1 bg-amber-500 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors"
-                              >
-                                Em Progresso
-                              </button>
-                              <button 
-                                onClick={() => handleUpdateStatus(selectedIssue.id, 'solved')}
-                                className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors"
-                              >
-                                Resolvido
-                              </button>
-                            </>
+                            <button 
+                              onClick={() => handleUpdateStatus(selectedIssue.id, 'solved')}
+                              className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors"
+                            >
+                              Resolvido
+                            </button>
                           )}
                         </div>
                         <button 
@@ -567,7 +573,7 @@ export default function App() {
                     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-3">
                       <p className="text-xs font-semibold text-slate-600">Você precisa estar logado para participar da discussão.</p>
                       <button 
-                        onClick={handleLogin} // Easy way to trigger auth popup if it's not showing
+                        onClick={handleLogin}
                         className="bg-blue-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm transition-all"
                       >
                         Fazer Login com Google
@@ -637,7 +643,7 @@ export default function App() {
                     Tecnologias Utilizadas
                   </h3>
                   <ul className="grid grid-cols-2 gap-2">
-                       {['React + Vite', 'TypeScript', 'Tailwind CSS', 'Firebase', 'Leaflet', 'OpenStreetMap'].map(tech => (
+                    {['React + Vite', 'TypeScript', 'Tailwind CSS', 'Firebase', 'Leaflet', 'OpenStreetMap'].map(tech => (
                       <li key={tech} className="bg-slate-50 px-3 py-1.5 rounded-lg text-sm text-slate-600 border border-slate-100">
                         {tech}
                       </li>
@@ -651,10 +657,10 @@ export default function App() {
                     Responsáveis
                   </h3>
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                       <p className="text-sm text-slate-600">
-     Lucas Ryan da Silva Santana, João Pedro Grassi de Almeida e Yuri Angelo Dragoni.
-     Projeto de conclusão do curso técnico em Desenvolvimento de Sistemas.
-   </p>
+                    <p className="text-sm text-slate-600">
+                      Lucas Ryan da Silva Santana, João Pedro Grassi de Almeida e Yuri Angelo Dragoni.
+                      Projeto de conclusão do curso técnico em Desenvolvimento de Sistemas.
+                    </p>
                   </div>
                 </section>
               </div>
@@ -731,14 +737,12 @@ export default function App() {
                   </div>
                 </div>
               ))}
-
-              
             </div>
 
             <div className="p-6 bg-white border-t border-slate-200">
               <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
-              <span>Resumo Geral</span>
-              <span className="text-blue-600">{solvedPercent}% Resolvidos</span>
+                <span>Resumo Geral</span>
+                <span className="text-blue-600">{solvedPercent}% Resolvidos</span>
               </div>
               <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <motion.div 
@@ -780,4 +784,3 @@ export default function App() {
 }
 
 // End of App component
-
