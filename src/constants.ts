@@ -4,7 +4,7 @@
  */
 
 import { AlertTriangle, Home, Info, Map as MapIcon, MessageSquare, Settings, Shield, User, Zap, Droplets, Flame, Trash2, Lightbulb } from 'lucide-react';
-import { IssueType } from './types';
+import { IssueType, UrbanIssue } from './types';
 
 export const ISSUE_TYPES: { type: IssueType; label: string; color: string; icon: any }[] = [
   { type: 'pothole', label: 'Buraco', color: '#B45309', icon: AlertTriangle },
@@ -18,3 +18,8 @@ export const ISSUE_TYPES: { type: IssueType; label: string; color: string; icon:
 
 export const APP_NAME = "Report Maps";
 export const APP_DESCRIPTION = "Melhorando a comunicação entre cidadãos e a prefeitura.";
+export const STATUS_INFO: Record<UrbanIssue['status'], { label: string; className: string }> = {
+  pending: { label: 'Pendente', className: 'bg-amber-100 text-amber-700' },
+  in_progress: { label: 'Em Progresso', className: 'bg-blue-100 text-blue-700' },
+  solved: { label: 'Resolvido', className: 'bg-green-100 text-green-700' },
+};
