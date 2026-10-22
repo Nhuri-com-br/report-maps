@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
 import { useIsAdmin } from './lib/useIsAdmin';
 import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
@@ -15,7 +14,7 @@ import { ReportForm } from './components/ReportForm';
 import { UrbanIssue } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, MapPin, Calendar, ThumbsUp, MessageCircle, X, Info, Zap, Shield, Map as MapIcon, MessageSquare } from 'lucide-react';
-import { ISSUE_TYPES, APP_NAME } from './constants';
+import { ISSUE_TYPES, APP_NAME, STATUS_INFO } from './constants';
 import { cn } from './lib/utils';
 import { auth, loginWithGoogle, getLoginErrorMessage } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -41,17 +40,18 @@ export default function App() {
   const [comments, setComments] = useState<IssueComment[]>([]);
   const [newComment, setNewComment] = useState('');
 
-    const isAdmin = useIsAdmin(user);
-    const isAdminUser = () => isAdmin;
+  const isAdmin = useIsAdmin(user);
+  const isAdminUser = () => isAdmin;
 
   const handleUpdateStatus = async (issueId: string, newStatus: 'pending' | 'in_progress' | 'solved') => {
-  try {
-    await issueService.updateStatus(issueId, newStatus);
-    if (selectedIssue?.id === issueId) setSelectedIssue(null); // fecha o card do mapa depois de mudar o status
-  } catch (error) {
-    console.error(error);
-  }
-};
+    try {
+      await issueService.updateStatus(issueId, newStatus);
+      if (selectedIssue?.id === issueId) setSelectedIssue(null); // fecha o card depois de mudar o status
+    } catch (error) {
+      console.error(error);
+      alert('Não foi possível alterar o status. Tente novamente.');
+    }
+  };
 
   const handleDeleteIssue = async (issueId: string) => {
     if (!isAdminUser()) return;
@@ -87,6 +87,9 @@ export default function App() {
     return '';
   };
 
+  const solvedCount = issues.filter(i => i.status === 'solved').length;
+  const solvedPercent = issues.length ? Math.round((solvedCount / issues.length) * 100) : 0;
+
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
@@ -101,6 +104,11 @@ export default function App() {
       unsubscribeIssues();
     };
   }, []);
+
+  // Mantém o card do mapa sincronizado com o banco (e fecha se o relato for apagado)
+  useEffect(() => {
+    setSelectedIssue(prev => (prev ? (issues.find(i => i.id === prev.id) ?? null) : prev));
+  }, [issues]);
 
   useEffect(() => {
     if (selectedIssueForForum) {
@@ -121,7 +129,7 @@ export default function App() {
     }
   };
 
-    const handleLogin = async () => {
+  const handleLogin = async () => {
     try {
       await loginWithGoogle();
     } catch (error) {
@@ -176,7 +184,7 @@ export default function App() {
                 <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-4">
                   <AlertTriangle size={20} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900">{filteredIssues.length}</h3>
+                <h3 className="text-2xl font-bold text-slate-900">{filteredIssues.filter(i => i.status !== 'solved').length}</h3>
                 <p className="text-sm text-slate-500 uppercase tracking-wider font-semibold">Relatos Ativos</p>
               </div>
               <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -226,9 +234,9 @@ export default function App() {
                           <h4 className="font-bold text-slate-900">{issue.title}</h4>
                           <span className={cn(
                             "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                            issue.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"
+                            STATUS_INFO[issue.status].className
                           )}>
-                            {issue.status === 'pending' ? 'Pendente' : issue.status === 'in_progress' ? 'Em Progresso' : 'Resolvido'}
+                            {STATUS_INFO[issue.status].label}
                           </span>
                         </div>
                         <p className="text-sm text-slate-600 line-clamp-2">{issue.description}</p>
@@ -357,25 +365,38 @@ export default function App() {
                         <X size={20} className="text-slate-400" />
                       </button>
                     </div>
+
+                    <span className={cn(
+                      "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                      STATUS_INFO[selectedIssue.status].className
+                    )}>
+                      {STATUS_INFO[selectedIssue.status].label}
+                    </span>
+
                     <p className="text-sm text-slate-600">{selectedIssue.description}</p>
+                    {selectedIssue.address && (
+                      <p className="text-xs text-slate-400 flex items-center gap-1">
+                        <MapPin size={12} /> {selectedIssue.address}
+                      </p>
+                    )}
                     {isAdminUser() && (
                       <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
                         <div className="flex gap-2">
+                          {selectedIssue.status === 'pending' && (
+                            <button 
+                              onClick={() => handleUpdateStatus(selectedIssue.id, 'in_progress')}
+                              className="flex-1 bg-amber-500 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors"
+                            >
+                              Em Progresso
+                            </button>
+                          )}
                           {selectedIssue.status !== 'solved' && (
-                            <>
-                              <button 
-                                onClick={() => handleUpdateStatus(selectedIssue.id, 'in_progress')}
-                                className="flex-1 bg-amber-500 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-600 transition-colors"
-                              >
-                                Em Progresso
-                              </button>
-                              <button 
-                                onClick={() => handleUpdateStatus(selectedIssue.id, 'solved')}
-                                className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors"
-                              >
-                                Resolvido
-                              </button>
-                            </>
+                            <button 
+                              onClick={() => handleUpdateStatus(selectedIssue.id, 'solved')}
+                              className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors"
+                            >
+                              Resolvido
+                            </button>
                           )}
                         </div>
                         <button 
@@ -552,7 +573,7 @@ export default function App() {
                     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-3">
                       <p className="text-xs font-semibold text-slate-600">Você precisa estar logado para participar da discussão.</p>
                       <button 
-                        onClick={() => window.location.reload()} // Easy way to trigger auth popup if it's not showing
+                        onClick={handleLogin}
                         className="bg-blue-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm transition-all"
                       >
                         Fazer Login com Google
@@ -609,7 +630,7 @@ export default function App() {
                   Resumo do Projeto
                 </h2>
                 <p className="text-slate-600 leading-relaxed mt-4">
-                  O projeto propõe o desenvolvimento de um aplicativo com o objetivo de ajudar a população a informar e acompanhar problemas urbanos, 
+                  O projeto propõe o desenvolvimento de uma plataforma web com o objetivo de ajudar a população a informar e acompanhar problemas urbanos, 
                   como buracos nas ruas, alagamentos, quedas de energia e queimadas. A ideia é permitir que os próprios usuários façam registros 
                   dessas situações de forma simples, facilitando a comunicação com órgãos responsáveis, como a Defesa Civil e a prefeitura.
                 </p>
@@ -622,7 +643,7 @@ export default function App() {
                     Tecnologias Utilizadas
                   </h3>
                   <ul className="grid grid-cols-2 gap-2">
-                    {['React + Vite', 'TypeScript', 'Tailwind CSS', 'Firebase Docs', 'Google Maps API', 'Motion'].map(tech => (
+                    {['React + Vite', 'TypeScript', 'Tailwind CSS', 'Firebase', 'Leaflet', 'OpenStreetMap'].map(tech => (
                       <li key={tech} className="bg-slate-50 px-3 py-1.5 rounded-lg text-sm text-slate-600 border border-slate-100">
                         {tech}
                       </li>
@@ -636,7 +657,10 @@ export default function App() {
                     Responsáveis
                   </h3>
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <p className="text-sm text-slate-600">Desenvolvido como projeto experimental de conclusão de curso.</p>
+                    <p className="text-sm text-slate-600">
+                      Lucas Ryan da Silva Santana, João Pedro Grassi de Almeida e Yuri Angelo Dragoni.
+                      Projeto de conclusão do curso técnico em Desenvolvimento de Sistemas.
+                    </p>
                   </div>
                 </section>
               </div>
@@ -647,7 +671,7 @@ export default function App() {
                   Objetivo Geral
                 </h2>
                 <p className="text-slate-600 leading-relaxed mt-4">
-                  Desenvolver um aplicativo que melhore a comunicação entre cidadãos e órgãos públicos através de uma plataforma digital interativa 
+                  Desenvolver uma plataforma web que melhore a comunicação entre cidadãos e órgãos públicos através de uma plataforma digital interativa 
                   rápida, organizada e eficiente.
                 </p>
               </section>
@@ -713,30 +737,17 @@ export default function App() {
                   </div>
                 </div>
               ))}
-
-              <div className="bg-green-50 border border-green-100 p-4 rounded-xl space-y-2">
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-200 flex items-center justify-center shrink-0 text-lg">🏛️</div>
-                  <div>
-                    <p className="text-xs font-bold text-green-800 uppercase tracking-tight">Defesa Civil Atualizou</p>
-                    <p className="text-[11px] text-green-700 font-medium mt-0.5">Equipe enviada para averiguação técnica no local.</p>
-                    <div className="mt-2 inline-block px-2 py-0.5 bg-green-600 text-[9px] text-white font-bold rounded uppercase tracking-wider">
-                      Em Atendimento
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className="p-6 bg-white border-t border-slate-200">
               <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
-                <span>Resumo Semanal</span>
-                <span className="text-blue-600">64% Resolvidos</span>
+                <span>Resumo Geral</span>
+                <span className="text-blue-600">{solvedPercent}% Resolvidos</span>
               </div>
               <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: "64%" }}
+                  animate={{ width: `${solvedPercent}%` }}
                   className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" 
                 />
               </div>
@@ -745,7 +756,7 @@ export default function App() {
         </div>
 
         <footer className="h-10 bg-white border-t border-slate-200 px-6 flex items-center justify-between text-[10px] text-slate-400 uppercase font-bold tracking-widest bg-white/80 backdrop-blur-sm z-20">
-          <div>&copy; 2024 Projeto Report Maps - TCC ADS</div>
+          <div>&copy; 2026 Projeto Report Maps - TCC Desenvolvimento de Sistemas</div>
           <div className="flex gap-4 items-center">
             <span>Versão 1.0.2-beta</span>
             <div className="flex items-center gap-2">
@@ -773,4 +784,3 @@ export default function App() {
 }
 
 // End of App component
-

@@ -1,20 +1,62 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Report Maps
 
-# Run and deploy your AI Studio app
+Plataforma web colaborativa para registrar e acompanhar problemas urbanos (buracos, alagamentos, queda de energia, queimadas, iluminação pública e lixo acumulado). O cidadão marca o local no mapa, descreve o problema, anexa uma foto e acompanha o status do relato.
 
-This contains everything you need to run your app locally.
+Projeto de conclusão do curso técnico em Desenvolvimento de Sistemas (Etec Prof. Armando Bayeux da Silva).
 
-View your app in AI Studio: https://ai.studio/apps/02582e37-33ba-43d4-93ea-aa29b5bb2390
+**Integrantes:** Lucas Ryan da Silva Santana, João Pedro Grassi de Almeida e Yuri Angelo Dragoni.
 
-## Run Locally
+**Site:** https://report-maps.vercel.app
 
-**Prerequisites:**  Node.js
+## Funcionalidades
 
+- Mapa interativo com os relatos de todos os usuários
+- Criação de relato tocando no mapa (local ajustável arrastando o pino)
+- Foto opcional, comprimida no navegador antes do envio
+- Endereço preenchido automaticamente a partir do ponto marcado
+- Botão "Minha localização" (GPS do dispositivo)
+- Curtidas e comentários (fórum por relato)
+- Status do relato: Pendente, Em progresso e Resolvido
+- Painel de administração: alterar status e apagar relatos
+- Login com Google
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Tecnologias
+
+React 19, Vite, TypeScript, Tailwind CSS, Leaflet (OpenStreetMap), Firebase (Authentication e Firestore), Vercel.
+
+## Como rodar localmente
+
+Pré-requisito: Node.js 18 ou superior.
+
+```bash
+npm install
+npm run dev
+```
+
+Abra `http://localhost:3000`. Use `localhost` e não o endereço de IP: o login com Google só funciona em domínios autorizados no Firebase.
+
+Outros comandos:
+
+```bash
+npm run lint     # verificação de código
+npm run build    # gera a versão de produção
+```
+
+## Firebase
+
+A configuração do projeto está em `firebase-applet-config.json`. As regras de segurança estão em `firestore.rules`. **Editar esse arquivo não atualiza o Firebase:** o conteúdo precisa ser colado e publicado em Firestore Database, aba Regras, no console do Firebase.
+
+### Administradores
+
+Quem é administrador é definido pela coleção `admins` do Firestore. Para adicionar uma pessoa, crie manualmente no console do Firebase um documento nessa coleção cujo ID é o UID dela (Authentication, aba Usuários). A coleção não pode ser alterada pelo site.
+
+## Estrutura
+
+```
+src/
+  components/   Header, Sidebar, MobileNav, MapView, Modal, ReportForm
+  services/     issueService, commentService (acesso ao Firestore)
+  lib/          firebase, geocode, useIsAdmin, utils
+  App.tsx       telas e fluxo principal
+firestore.rules regras de segurança do banco
+```

@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, CircleMarker } from 'react-leaflet';
+import { LocateFixed } from 'lucide-react';
 import { useRef, useState, useEffect } from 'react';
 import { auth, loginWithGoogle, getLoginErrorMessage } from '../lib/firebase';
 // Removed duplicate import
@@ -37,6 +38,68 @@ function MapEvents({ onMapClick }: { onMapClick: (lat: number, lng: number) => v
     },
   });
   return null;
+}
+
+function LocateControl() {
+  const map = useMap();
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<[number, number] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Evita que o clique no botão chegue ao mapa e crie um pino
+  useEffect(() => {
+    if (wrapperRef.current) L.DomEvent.disableClickPropagation(wrapperRef.current);
+  }, []);
+
+  const locate = () => {
+    if (!('geolocation' in navigator)) {
+      alert('Seu navegador não suporta geolocalização.');
+      return;
+    }
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        const here: [number, number] = [p.coords.latitude, p.coords.longitude];
+        setPos(here);
+        map.flyTo(here, 17);
+        setLoading(false);
+      },
+      (err) => {
+        setLoading(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          alert('Permissão de localização negada. Ative a localização do navegador para usar este recurso.');
+        } else if (err.code === err.TIMEOUT) {
+          alert('Demorou demais para obter sua localização. Tente novamente.');
+        } else {
+          alert('Não foi possível obter sua localização.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  return (
+    <>
+      <div ref={wrapperRef} className="absolute top-4 right-4 z-[1000]">
+        <button
+          onClick={locate}
+          disabled={loading}
+          aria-label="Minha localização"
+          title="Minha localização"
+          className="w-11 h-11 bg-white rounded-full shadow-lg border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-600"
+        >
+          <LocateFixed size={20} className={loading ? 'animate-pulse text-blue-600' : ''} />
+        </button>
+      </div>
+      {pos && (
+        <CircleMarker
+          center={pos}
+          radius={8}
+          pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }}
+        />
+      )}
+    </>
+  );
 }
 
 export function MapView({ issues, onSelectIssue, onMapClick }: { 
@@ -105,6 +168,7 @@ export function MapView({ issues, onSelectIssue, onMapClick }: {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapEvents onMapClick={handleMapClick} />
+                <LocateControl />
         
         {tempMarker && (
           <Marker
