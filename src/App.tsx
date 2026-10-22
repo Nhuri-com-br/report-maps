@@ -368,6 +368,11 @@ export default function App() {
                     </span>
 
                     <p className="text-sm text-slate-600">{selectedIssue.description}</p>
+                      {selectedIssue.address && (
+                      <p className="text-xs text-slate-400 flex items-center gap-1">
+                        <MapPin size={12} /> {selectedIssue.address}
+                      </p>
+                    )}
                     {isAdminUser() && (
                       <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
                         <div className="flex gap-2">

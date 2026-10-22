@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-
+import { reverseGeocode } from '../lib/geocode';
 import { ISSUE_TYPES } from '../constants';
 import { IssueType } from '../types';
 import { MapPin, Camera, AlertCircle } from 'lucide-react';
@@ -24,6 +24,8 @@ export function ReportForm({ onSubmit, initialLocation }: ReportFormProps) {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const addressEdited = React.useRef(false);
+  const [addressLoading, setAddressLoading] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,12 +68,29 @@ export function ReportForm({ onSubmit, initialLocation }: ReportFormProps) {
     }
   };
 
-  useEffect(() => {
-    if (initialLocation) {
-      // Mock reverse geocoding for now
-      setAddress(`Lat: ${initialLocation.lat.toFixed(4)}, Lng: ${initialLocation.lng.toFixed(4)}`);
-    }
-  }, [initialLocation]);
+    useEffect(() => {
+    // Durante a animação de fechar o modal, initialLocation pode chegar vazio
+    if (!initialLocation) return;
+
+    const controller = new AbortController();
+    const fallback = `Lat: ${initialLocation.lat.toFixed(4)}, Lng: ${initialLocation.lng.toFixed(4)}`;
+
+    setAddress(fallback);
+    addressEdited.current = false;
+    setAddressLoading(true);
+
+    reverseGeocode(initialLocation.lat, initialLocation.lng, controller.signal)
+      .then((found) => {
+        // Só preenche se a pessoa ainda não digitou o endereço
+        if (found && !addressEdited.current) setAddress(found);
+      })
+      .catch(() => { /* sem internet ou serviço fora: fica o fallback */ })
+      .finally(() => {
+        if (!controller.signal.aborted) setAddressLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [initialLocation?.lat, initialLocation?.lng]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,8 +151,11 @@ export function ReportForm({ onSubmit, initialLocation }: ReportFormProps) {
             <input 
               type="text" 
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Endereço aproximado"
+                            onChange={(e) => {
+                addressEdited.current = true;
+                setAddress(e.target.value);
+              }}
+              placeholder={addressLoading ? 'Buscando endereço...' : 'Endereço aproximado'}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-slate-900 transition-all"
             />
           </div>
